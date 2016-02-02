@@ -1,0 +1,176 @@
+---
+title: 'The poorest 5%: Who they are and how they live'
+output: html_document
+---
+
+## Introduction
+This post is spotlighting the people whose total personal income is among the top 5% countrywide. I have studied some of the lifestyle data that is available from the census, centering on distribution by age and state, income sources, racial and gender equality and origins. For the sake of simplicity, I will refer to the top 5% as 'the rich' and as 'the masses' to the rest. Throughout the post, I hide the code, except for chunks where I feel it might be interesting to the reader. Out of he data, I took only adults who reported a personal income different from zero. A zero personal income might indicate that this peron is living at the expense of a spouse or parents whose income is unknown; this would only introduce blur into the findings.
+
+```{r echo=FALSE,message=FALSE}
+require ("ggplot2")
+require ("choroplethr")
+require ("choroplethrMaps")
+require("data.table")
+```
+```{r echo=FALSE}
+extract.cols <- function (data) {
+  data [, c ("PINCP", "WAGP", "SEMP", "INTP", "SSIP", "SSP", "PAP", "RETP", "OIP",
+             "AGEP", "SEX",
+             "ST",
+             "NATIVITY", "POBP", "RAC1P")]
+}
+
+var <- c ("PINCP", "WAGP", "SEMP", "INTP", "SSIP", "SSP", "PAP", "RETP", "OIP",
+             "AGEP", "SEX",
+             "ST",
+             "NATIVITY", "POBP", "RAC1P")
+dA <- fread("csv_pus/ss13pusa.csv", select = var)
+dB <- fread("csv_pus/ss13pusb.csv", select = var)
+data <- as.data.frame(rbind(dA,dB))
+rm(dA,dB)
+
+
+# remove zero income and NA's
+data <- data [data$PINCP != 0 & !is.na (data$PINCP), ]
+
+
+p <- quantile(data$PINCP,prob=0.05,na.rm=T)
+poor <- data[data$PINCP < p,]
+mass <- data[data$PINCP >= p,]
+
+# an additional variable, convenient for multiplots
+data$Group <- factor (data$PINCP < p, labels = c ("Masses", "Poor"))
+# head(data$PINCP < p)
+# head(data$Group)
+
+# q <- quantile (data$PINCP, prob = 0.95, na.rm = TRUE)
+# rich <- data[data$PINCP > q,]
+# mass <- data[data$PINCP <= q,]
+# 
+# # an additional variable, convenient for multiplots
+# data$Group <- factor (data$PINCP > q, labels = c ("Masses", "Rich"))
+```
+
+## Income distribution
+The 5% poorest people live with **$`r as.character(p)`**.
+
+The age distribution of the poor is drastically different from the rest of the population with the share of young adults being very high.
+
+```{r echo=FALSE}
+plot.age <- function (data, color.family, title) {
+  ggplot (data, aes (AGEP)) +
+          geom_bar (binwidth = 5, fill = paste0 (color.family, "1"), color = paste0 (color.family, "3")) +
+          theme_bw() + xlab ("Age") + ylab ("Count") + ggtitle (title)
+}
+
+print (plot.age (mass, "snow", "Age distribution among the masses"))
+print (plot.age (poor, "slategray", "Age distribution among the Poor"))
+```
+
+The states with the highest populations of the poor are **California**, **Texas** and **New York**. However this plot may be misleading as California is state with a high share of the population. Actually When the richest 5% is ploted instead, a similar plot is obtained. 
+
+```{r echo=F}
+# takes a table across states as input and prints it on a map
+# uses the "choroplethr" package
+plot.map <- function (tb, title = "", legend = "") {
+  # auxiliary table with state names preformatted for choroplethr
+  states <- data.frame ( c (1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20,
+      21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+      36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 49, 50, 51,
+      53, 54, 55, 56, 72),
+    c("alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut",
+      "delaware", "district of columbia", "florida", "georgia", "hawaii", "idaho", "illinois",
+      "indiana", "iowa", "kansas", "kentucky", "louisiana", "maine", "maryland", "massachusetts",
+      "michigan", "minnesota", "mississippi", "missouri", "montana", "nebraska", "nevada",
+      "new hampshire", "new jersey", "new mexico", "new york", "north carolina", "north dakota",
+      "ohio", "oklahoma", "oregon", "pennsylvania", "rhode island",
+      "south carolina", "south dakota", "tennessee", "texas", "utah", "vermont", "virginia",
+      "washington", "west virginia", "wisconsin", "wyoming", "puerto rico"))
+      
+  names (states) = c ("Index", "State")
+  
+  i <- match (names (tb), states$Index)
+  states <- data.frame (tb, states$State[i])
+  states <- states [,c (3,2)]
+  
+  # this is required by choroplethr
+  names (states) <- c ("region", "value")
+  states$region <- as.character (states$region)
+  
+  # this is identical to state_choroplethr except that the labels are being removed
+  c = StateChoropleth$new(states)
+  c$set_num_colors(1)
+  c$title  = title
+  c$legend = legend
+  c$set_zoom(NULL)
+  c$show_labels = FALSE
+  c$render()
+}
+```
+```{r fig.width = 10, fig.height = 5}
+tb.poor <- table (poor$ST)
+tb <- tb.poor / sum (tb.poor)
+plot.map (tb, "Distribution of the poor across states", "Share of total")
+```
+
+The following plot shows the share per state. Alaska and Utah have the highest concentation of poor people:
+
+```{r fig.width = 10, fig.height = 5}
+tb.mass <- table (mass$ST)
+tb <- tb.poor /  (tb.poor + tb.mass)
+plot.map (tb, "Share of the poor by state", "Share per state")
+```
+
+## Income sources
+
+# PENDING
+
+```{r echo=FALSE}
+# plot.income.sources <- function (data, color.family, title) {
+#   inc <- data[c ("WAGP", "SEMP", "INTP", "SSIP", "SSP", "PAP", "RETP", "OIP")]
+#   inc <- colSums (inc) / sum (as.numeric (data$PINCP))
+#   index <- seq_along (inc)
+#   sources <- c ("Wages", "Self-employment", "Dividends", "Suppl. security", "Social security", "Public assistance", "Retirement", "Other")
+#   inc <- data.frame (index, inc, factor (sources, levels = sources[index]))
+#   names (inc) <- c ("Index", "Values", "Sources")
+#   ggplot (inc, aes (Sources, Values)) +
+#     geom_bar (binwidth = 5, stat = "identity", fill = paste0 (color.family, "1"), color = paste0 (color.family, "3")) +
+#     theme_bw() + xlab ("Income source") + ylab ("Average share") + ggtitle (title) +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#   
+# }
+# 
+# print (plot.income.sources (mass, "snow", "Income sources of the masses"))
+# print (plot.income.sources (poor, "slategray", "Income sources of the poor"))
+```
+
+## Equality
+
+### Race
+
+The proportion of poor **Whites** is lower than the proportion of the rest of Whites. All other races are overrepresented, this is especially true of **African Americans**. **Native Americans** are clearly overrepresented within the poor. 
+
+```{r echo=FALSE}
+race <- c (table (poor$RAC1P) / length (poor$RAC1P), table (mass$RAC1P) / length (mass$RAC1P))
+race <- data.frame (race)
+names (race) <- "Share"
+race$Group <- c (rep (1,9), rep (0,9))
+race$Group <- factor (race$Group, labels = c ("Masses", "Poor"))
+race$Race <-c(1:9) 
+race$Race <- factor (race$Race, labels = c ("White", "African American", "American Indian", "Alaska Native", "Unspecified Native", "Asian", "Hawaiian Native", "Other", "Multiple"))
+largest.races <- race[which (!is.na (match (race$Race, c ("White", "African American", "Asian", "Other", "Multiple")))),]
+n.am <- race[which (!is.na (match (race$Race,
+                            c ("American Indian", "Alaska Native", "Unspecified Native", "Hawaiian Native")))),]
+  
+plot.races <- function (race, title) {
+  ggplot(race, aes(Race,Share, fill=Group, color=Group)) + geom_bar(stat="identity",position="dodge") +
+  scale_fill_manual (values = c ("snow1", "slategray1")) + scale_color_manual (values = c ("snow3", "slategray3"))+
+  theme_bw() + xlab ("") + ggtitle (title) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+  
+print (plot.races (largest.races, "Largest races within income groups"))
+print (plot.races (n.am, "Native Americans within income groups"))
+
+rm (race)
+```
+
