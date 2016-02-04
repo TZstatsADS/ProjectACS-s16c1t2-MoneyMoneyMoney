@@ -1,0 +1,79 @@
+---
+output: pdf_document
+---
+##Hexiu Ye
+##research on Income and Class of Work
+```{r}
+setwd("~/GitHub/project1")
+library(dplyr)
+library(ggplot2)
+library(data.table)
+library(RColorBrewer)
+
+colsToKeep <- c("ST","PINCP","OCCP","COW")
+
+#load data from set A and B
+populDataA <- fread("ss13pusa.csv",select=colsToKeep)
+populDataB <- fread("ss13pusb.csv",select=colsToKeep)
+
+#concat data to one
+populData <- rbind(populDataA, populDataB)
+
+populData <- tbl_df(populData) 
+ds <-  populData %>%  
+  na.omit() %>%
+  #filter(populData,PINCP!='bbbbbb') %>% #exclude no income person or N/A
+  group_by(COW) #group by class of work 
+ds<-filter(ds,PINCP!='bbbbbb') #exclude no income N/A
+
+mean_cow<-summarise(ds,mean=mean(PINCP))
+mean_cow<-arrange(mean_cow, desc(mean))
+mean_cow
+#boxplot(mean_cow$mean~mean_cow$COW,outline=TRUE)
+
+
+ggplot(data=mean_cow, aes( x=factor(COW), y=mean,fill=factor(COW))) +
+  geom_bar(colour="black",stat="identity")+
+  xlab("class of work") + ylab("mean of total person's income ") +
+  ggtitle("Average Income of Different Classes of Work")+
+  scale_fill_hue(c=40, l=75)+ 
+  scale_fill_discrete( 
+                      breaks=c("1", "2", "3","4","5","6","7","8","9"),
+                      labels=c("Employee of a private for-profit company or business, or of an individual, for wages,salary, or commissions",
+                               "Employee of a private not-for-profit tax-exempt, or charitable organization",
+                                "Local government employee (city, county, etc.)",
+                                "State government employee",
+                                "Federal government employee",
+                                "Self-employed in own not incorporated business, professional practice, or farm",
+                                "Self-employed in own incorporated business, professional practice or farm",
+                                "Working without pay in family business or farm",
+                                 "Unemployed and last worked 5 years ago or earlier or never")
+                      )+
+  theme(legend.position="bottom",legend.direction = "vertical")
+
+ds5<-filter(populData,COW==5)%>%
+    na.omit()%>%
+    filter(PINCP!='bbbbbb')%>%
+    group_by(OCCP)%>% 
+    summarise(mean=mean(PINCP))%>%
+    arrange(desc(mean))
+  
+ds5head<-head(ds5)
+ds5head
+ds5tail<-tail(ds5)
+ds5tail
+
+
+ds7<-filter(populData,COW==7)%>%
+  na.omit()%>%
+  filter(PINCP!='bbbbbb')%>%
+  group_by(OCCP)%>%
+  summarise(mean=mean(PINCP))%>%
+  arrange(desc(mean))
+
+ds7head<-head(ds7)
+ds7tail<-tail(ds7)
+ds7head
+ds5tail
+
+```
